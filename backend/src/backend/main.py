@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import marvin
+from jinja2 import Template
 
 app = FastAPI(title="FeverDreamOS Backend")
 
@@ -16,6 +17,16 @@ app.add_middleware(
 
 app_cache: dict[str, str] = {}
 
+PROMPT_TEMPLATE = Template("""
+generate html with inline css for a '{{ app_name }}' desktop app. windows xp style.
+
+the content will be placed inside an existing window that ALREADY HAS a title bar and close button.
+DO NOT generate any window chrome, title bars, or close buttons.
+only generate the app's content area (toolbars, buttons, main content).
+
+return pure html with inline styles, no markdown code blocks.
+""")
+
 
 class UserAction(BaseModel):
     action: str
@@ -25,16 +36,16 @@ class UserAction(BaseModel):
 @app.post("/action", response_class=HTMLResponse)
 async def handle_action(action: UserAction) -> str:
     app_name = action.data.get("app_name", "Unknown App") if action.data else "Unknown App"
-    
+
     if app_name in app_cache:
         return app_cache[app_name]
-    
+
     html = await marvin.cast_async(
         {"app_name": app_name, "action": action.action},
         target=str,
-        instructions=f"Generate HTML with inline CSS for a '{app_name}' desktop app. Windows XP style. Include relevant UI elements (toolbars, buttons, content area). ~540px × 300px. Return only the INNER content HTML (no outer containers, frames, or window borders - that's already provided). No markdown.",
+        instructions=PROMPT_TEMPLATE.render(app_name=app_name),
     )
-    
+
     app_cache[app_name] = html
     return html
 

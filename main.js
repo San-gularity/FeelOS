@@ -274,52 +274,8 @@ document.getElementById('desktop').addEventListener('contextmenu', (e) => {
 
 document.addEventListener('click', hideContextMenu);
 
-function createTrashBin() {
-  const trash = document.createElement('div');
-  trash.className = 'desktop-icon';
-  trash.id = 'trash-bin';
-  trash.style.right = '20px';
-  trash.style.bottom = '60px';
-  trash.style.left = 'auto';
-  trash.style.top = 'auto';
-  
-  const image = document.createElement('div');
-  image.className = 'desktop-icon-image';
-  image.textContent = '🗑️';
-  
-  const label = document.createElement('div');
-  label.className = 'desktop-icon-label';
-  label.textContent = 'Trash';
-  
-  trash.appendChild(image);
-  trash.appendChild(label);
-  
-  trash.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    trash.style.background = 'rgba(255, 255, 255, 0.3)';
-  });
-  
-  trash.addEventListener('dragleave', () => {
-    trash.style.background = '';
-  });
-  
-  trash.addEventListener('drop', (e) => {
-    e.preventDefault();
-    trash.style.background = '';
-    const iconId = e.dataTransfer.getData('text/plain');
-    const icon = document.querySelector(`[data-icon-id="${iconId}"]`);
-    if (icon && icon.id !== 'trash-bin') {
-      icon.remove();
-      saveDesktopState();
-    }
-  });
-  
-  document.getElementById('desktop').appendChild(trash);
-}
-
 function saveDesktopState() {
   const icons = Array.from(document.querySelectorAll('.desktop-icon'))
-    .filter(icon => icon.id !== 'trash-bin')
     .map(icon => ({
       name: icon.querySelector('.desktop-icon-label').textContent,
       x: parseInt(icon.style.left),
@@ -338,6 +294,5 @@ function loadDesktopState() {
   }
 }
 
-createTrashBin();
 loadDesktopState();
 
