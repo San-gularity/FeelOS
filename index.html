@@ -102,13 +102,74 @@
         #launcher button:active {
             border-style: inset;
         }
+
+        .desktop-icon {
+            position: absolute;
+            width: 80px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .desktop-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .desktop-icon-image {
+            width: 48px;
+            height: 48px;
+            background: var(--window-bg);
+            border: 2px solid var(--window-border);
+            margin: 0 auto 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .desktop-icon-label {
+            color: white;
+            font-size: 11px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            word-wrap: break-word;
+            padding: 2px;
+        }
+
+        .desktop-icon-label[contenteditable="true"] {
+            background: white;
+            color: black;
+            text-shadow: none;
+            outline: 2px solid var(--window-border);
+        }
+
+        .context-menu {
+            position: absolute;
+            background: var(--window-bg);
+            border: 2px solid var(--window-border);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            padding: 2px;
+            z-index: 10000;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 4px 24px 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .context-menu-item:hover {
+            background: var(--window-bar);
+            color: var(--window-bar-text);
+        }
     </style>
 </head>
 <body>
     <div id="desktop"></div>
-    <div id="launcher">
-        <button id="explorer-btn">File Explorer</button>
-    </div>
+    <div id="context-menu" class="context-menu"></div>
     <script type="module" src="main.js"></script>
 </body>
 </html>

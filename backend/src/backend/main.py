@@ -22,10 +22,12 @@ class UserAction(BaseModel):
 
 @app.post("/action", response_class=HTMLResponse)
 async def handle_action(action: UserAction) -> str:
+    app_name = action.data.get("app_name", "Unknown App") if action.data else "Unknown App"
+    
     html = await marvin.cast_async(
-        action,
+        {"app_name": app_name, "action": action.action},
         target=str,
-        instructions="Generate HTML content for a browser OS File Explorer window based on the user action. Return only valid HTML, no markdown or code blocks. For 'open_file_explorer' action, create a file explorer interface with width 560px, height 320px, padding 12px.",
+        instructions=f"Generate HTML with inline CSS for a '{app_name}' desktop app. Windows XP style. Include relevant UI elements (toolbars, buttons, content area). ~540px × 300px. Return only the HTML content, no markdown.",
     )
     return html
 
