@@ -10,3 +10,6 @@ run-backend:
 test-backend:
     cd backend && uv run --with-editable . --with httpx python ../scripts/smoke_test.py ${BASE_URL:-http://localhost:8000}
 
+run-frontend:
+    uv run python -m http.server ${PORT:-5173}
+
