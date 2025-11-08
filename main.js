@@ -4,6 +4,8 @@ const wm = {
     win.className = 'window';
     win.style.left = '100px';
     win.style.top = '100px';
+    win.style.width = '560px';
+    win.style.height = '320px';
 
     const titlebar = document.createElement('div');
     titlebar.className = 'window-titlebar';
@@ -23,10 +25,15 @@ const wm = {
     contentDiv.className = 'window-content';
     contentDiv.appendChild(content);
     
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'window-resize-handle';
+    
     win.appendChild(titlebar);
     win.appendChild(contentDiv);
+    win.appendChild(resizeHandle);
     
     makeDraggable(win, titlebar);
+    makeResizable(win, resizeHandle);
     
     document.getElementById('desktop').appendChild(win);
   }
@@ -61,11 +68,44 @@ function makeDraggable(element, handle) {
   }
 }
 
+function makeResizable(element, handle) {
+  handle.onmousedown = startResize;
+  
+  function startResize(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = element.offsetWidth;
+    const startHeight = element.offsetHeight;
+    
+    function resize(e) {
+      const width = startWidth + (e.clientX - startX);
+      const height = startHeight + (e.clientY - startY);
+      element.style.width = Math.max(200, width) + 'px';
+      element.style.height = Math.max(150, height) + 'px';
+    }
+    
+    function stopResize() {
+      document.removeEventListener('mousemove', resize);
+      document.removeEventListener('mouseup', stopResize);
+    }
+    
+    document.addEventListener('mousemove', resize);
+    document.addEventListener('mouseup', stopResize);
+  }
+}
+
 async function openApp(appName) {
   if (!appName) return;
   
   const container = document.createElement('div');
-  container.textContent = 'Loading...';
+  container.className = 'loading';
+  container.innerHTML = `
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading ${appName}...</div>
+  `;
   wm.createWindow(appName, container);
   
   try {
@@ -76,9 +116,11 @@ async function openApp(appName) {
     });
     
     const html = await response.text();
+    container.className = '';
     container.innerHTML = html;
   } catch (error) {
-    container.textContent = `Error: ${error.message}`;
+    container.className = '';
+    container.innerHTML = `<div style="padding: 20px; color: #c00;">Error: ${error.message}</div>`;
   }
 }
 
@@ -87,6 +129,8 @@ function createDesktopIcon(name, x, y) {
   icon.className = 'desktop-icon';
   icon.style.left = x + 'px';
   icon.style.top = y + 'px';
+  icon.draggable = true;
+  icon.dataset.iconId = `icon-${Date.now()}-${Math.random()}`;
   
   const image = document.createElement('div');
   image.className = 'desktop-icon-image';
@@ -101,9 +145,17 @@ function createDesktopIcon(name, x, y) {
   
   let dragStart = null;
   
+  icon.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('text/plain', icon.dataset.iconId);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  
   icon.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     if (label.contentEditable === 'true') return;
+    
+    e.preventDefault();
+    icon.draggable = false;
     
     dragStart = { x: e.clientX - icon.offsetLeft, y: e.clientY - icon.offsetTop };
     
@@ -115,6 +167,7 @@ function createDesktopIcon(name, x, y) {
     function onMouseUp() {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      icon.draggable = true;
       saveDesktopState();
     }
     
@@ -221,12 +274,57 @@ document.getElementById('desktop').addEventListener('contextmenu', (e) => {
 
 document.addEventListener('click', hideContextMenu);
 
+function createTrashBin() {
+  const trash = document.createElement('div');
+  trash.className = 'desktop-icon';
+  trash.id = 'trash-bin';
+  trash.style.right = '20px';
+  trash.style.bottom = '60px';
+  trash.style.left = 'auto';
+  trash.style.top = 'auto';
+  
+  const image = document.createElement('div');
+  image.className = 'desktop-icon-image';
+  image.textContent = '🗑️';
+  
+  const label = document.createElement('div');
+  label.className = 'desktop-icon-label';
+  label.textContent = 'Trash';
+  
+  trash.appendChild(image);
+  trash.appendChild(label);
+  
+  trash.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    trash.style.background = 'rgba(255, 255, 255, 0.3)';
+  });
+  
+  trash.addEventListener('dragleave', () => {
+    trash.style.background = '';
+  });
+  
+  trash.addEventListener('drop', (e) => {
+    e.preventDefault();
+    trash.style.background = '';
+    const iconId = e.dataTransfer.getData('text/plain');
+    const icon = document.querySelector(`[data-icon-id="${iconId}"]`);
+    if (icon && icon.id !== 'trash-bin') {
+      icon.remove();
+      saveDesktopState();
+    }
+  });
+  
+  document.getElementById('desktop').appendChild(trash);
+}
+
 function saveDesktopState() {
-  const icons = Array.from(document.querySelectorAll('.desktop-icon')).map(icon => ({
-    name: icon.querySelector('.desktop-icon-label').textContent,
-    x: parseInt(icon.style.left),
-    y: parseInt(icon.style.top)
-  }));
+  const icons = Array.from(document.querySelectorAll('.desktop-icon'))
+    .filter(icon => icon.id !== 'trash-bin')
+    .map(icon => ({
+      name: icon.querySelector('.desktop-icon-label').textContent,
+      x: parseInt(icon.style.left),
+      y: parseInt(icon.style.top)
+    }));
   localStorage.setItem('desktop-icons', JSON.stringify(icons));
 }
 
@@ -240,5 +338,6 @@ function loadDesktopState() {
   }
 }
 
+createTrashBin();
 loadDesktopState();
 
