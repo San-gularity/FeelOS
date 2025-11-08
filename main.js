@@ -1,3 +1,5 @@
+import Anthropic from '@anthropic-ai/sdk';
+
 const wm = {
   createWindow(title, content) {
     const win = document.createElement('div');
@@ -97,9 +99,44 @@ function makeResizable(element, handle) {
   }
 }
 
+const APP_CACHE = new Map();
+
+const PROMPT_TEMPLATE = `
+generate html with inline css for a '{{APP_NAME}}' desktop app. windows xp style.
+
+the content will be placed inside an existing window that ALREADY HAS a title bar and close button.
+DO NOT generate any window chrome, title bars, or close buttons.
+only generate the app's content area (toolbars, buttons, main content).
+
+return pure html with inline styles, no markdown code blocks.
+`;
+
+async function generateAppHtml(appName) {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('VITE_ANTHROPIC_API_KEY not set in .env file');
+  }
+
+  const client = new Anthropic({
+    apiKey,
+    dangerouslyAllowBrowser: true
+  });
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: PROMPT_TEMPLATE.replace('{{APP_NAME}}', appName)
+    }]
+  });
+
+  return message.content[0].text;
+}
+
 async function openApp(appName) {
   if (!appName) return;
-  
+
   const container = document.createElement('div');
   container.className = 'loading';
   container.innerHTML = `
@@ -107,15 +144,22 @@ async function openApp(appName) {
     <div class="loading-text">Loading ${appName}...</div>
   `;
   wm.createWindow(appName, container);
-  
+
   try {
-    const response = await fetch('http://localhost:8000/action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'open_app', data: { app_name: appName } })
-    });
-    
-    const html = await response.text();
+    // check cache first
+    if (APP_CACHE.has(appName)) {
+      const html = APP_CACHE.get(appName);
+      container.className = '';
+      container.innerHTML = html;
+      return;
+    }
+
+    // generate with ai
+    const html = await generateAppHtml(appName);
+
+    // cache it
+    APP_CACHE.set(appName, html);
+
     container.className = '';
     container.innerHTML = html;
   } catch (error) {
